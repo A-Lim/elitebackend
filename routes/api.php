@@ -70,6 +70,7 @@ Route::prefix('v1')->group(function () {
         Route::get('workflows/{workflow}/orders/{id}', 'OrderController@details');
         Route::post('workflows/{workflow}/orders', 'OrderController@create');
         Route::post('workflows/{workflow}/orders/exists', 'OrderController@exists');
+        Route::patch('workflows/{workflow}/orders/{id}', 'OrderController@update');
         Route::patch('workflows/{workflow}/orders/{id}/updateprocess', 'OrderController@updateProcess');
         Route::delete('workflows/{workflow}/orders/{id}', 'OrderController@delete');
     });

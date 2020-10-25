@@ -9,6 +9,7 @@ use App\Process;
 use App\OrderFile;
 use Illuminate\Pagination\LengthAwarePaginator;
 
+use File;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
@@ -36,7 +37,8 @@ class OrderRepository implements IOrderRepository {
     public function list(Workflow $workflow, $query, $withFiles = false, $paginate = false) {
         $tableName = '_workflow_'.$workflow->id;
         $query = Order::fromTable($tableName)
-            ->agGridQuery($query);
+            ->agGridQuery($query)
+            ->orderBy('id', 'DESC');
 
         if ($paginate) {
             $limit = isset($data['limit']) ? $data['limit'] : 10;
@@ -86,8 +88,8 @@ class OrderRepository implements IOrderRepository {
             'status' => self::STATUS_INPROGRESS
         ];
 
-        foreach ($data['processes'] as $process) {
-            $insert_data[$process->code] = $process['default'];
+        foreach ($workflow->processes as $process) {
+            $insert_data[$process->code] = $data[$process->code] ?? $process->default;
         }
 
         $insert_data['created_by'] = auth()->id();
@@ -100,6 +102,53 @@ class OrderRepository implements IOrderRepository {
         $filesData = $this->saveFiles($workflow->id, $order->id, $files);
         // save file data to db
         $order->files()->createMany($filesData);
+        DB::commit();
+    }
+
+    public function update(Workflow $workflow, Order $order, $data, $files = null) {
+        $tableName = '_workflow_'.$workflow->id;
+
+        $data['files'] = $data['files'] ?? [];
+
+        $update_data = [
+            'iwo' => $data['iwo'],
+            'customer' => $data['customer'],
+            'delivery_date' => $data['delivery_date'],
+            'remark' => $data['remark'] ?? null,
+            'status' => $data['status'] ?? self::STATUS_INPROGRESS
+        ];
+
+        $update_data['updated_by'] = auth()->id();
+        $update_data['updated_at'] = Carbon::now();
+
+        foreach ($workflow->processes as $process) {
+            $update_data[$process->code] = $data[$process->code] ?? $process->default;
+        }
+
+        $update_data['created_by'] = auth()->id();
+        $update_data['created_at'] = Carbon::now();
+
+        // retrieve files that is not listed 
+        $toBeDeleted = $order->files()
+            // skip mutator
+            ->toBase()
+            ->whereNotIn('id', $data['files'])->get();
+        
+        DB::beginTransaction();
+        // update order
+        Order::fromTable($tableName)
+            ->where('id', $order->id)
+            ->update($update_data);
+        // save file to disk
+        $filesData = $this->saveFiles($workflow->id, $order->id, $files);
+        // save file data to db
+        $order->files()->createMany($filesData);
+        // delete disk files
+        $this->deleteFiles($toBeDeleted);
+        // delete db files 
+        $order->files()
+            ->whereIn('id', $toBeDeleted->pluck('id')->toArray())
+            ->delete();
         DB::commit();
     }
 
@@ -116,19 +165,22 @@ class OrderRepository implements IOrderRepository {
     /**
      * {@inheritdoc}
      */
-    public function updateProcess(Workflow $workflow, $order_id, $data) {
+    public function updateProcess(Workflow $workflow, Order $order, $data) {
+        $tableName = '_workflow_'.$workflow->id;
+
         DB::beginTransaction();
 
         $tableName = '_workflow_'.$workflow->id;
         $process = Process::find($data['process_id']);
         $process_column = $process->code;
-        $order = Order::fromTable($tableName)->where('id', $order_id)->first();
         $from_status = $order->$process_column;
-        $order->update([$process_column => $data['status']]);
+        Order::fromTable($tableName)
+            ->where('id', $order->id)
+            ->update([$process_column => $data['status']]);
 
         OrderLog::create([
             'workflow_id' => $workflow->id,
-            'order_id' => $order_id,
+            'order_id' => $order->id,
             'process_id' => $process->id,
             'from_status' => $from_status,
             'to_status' => $data['status'],
@@ -137,6 +189,15 @@ class OrderRepository implements IOrderRepository {
         ]);
 
         DB::commit();
+    }
+
+    private function deleteFiles($order_files) {
+        $filePaths = $order_files->pluck('path')->toArray();
+
+        foreach ($filePaths as $filePath) {
+            $fullPath = public_path($filePath);
+            unlink($fullPath);
+        }
     }
 
     private function saveFiles($workflow_id, $order_id, $files) {

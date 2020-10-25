@@ -1,6 +1,7 @@
 <?php
 namespace App\Repositories\Order;
 
+use App\Order;
 use App\Workflow;
 
 interface IOrderRepository {
@@ -57,8 +58,8 @@ interface IOrderRepository {
      * Update order process status
      * 
      * @param Workflow $workflow
-     * @param integer $order_id
+     * @param Order $order
      * @param array $data
      */
-    public function updateProcess(Workflow $workflow, $order_id, $data);
+    public function updateProcess(Workflow $workflow, Order $order, $data);
 }

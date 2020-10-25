@@ -34,15 +34,16 @@ class WorkflowPolicy {
      * Determine whether the user can view the workflow.
      *
      * @param  \App\User  $user
-     * @param  \App\Workflow  $workflows
+     * @param  \App\Workflow  $workflow
      * @return mixed
      */
-    public function view(User $user, Workflow $workflows) {
-        return $user->can('workflows.view');
+    public function view(User $user, Workflow $workflow) {
+        // return $user->can('workflows.view');
+        return true;
     }
 
     /**
-     * Determine whether the user can create workflows.
+     * Determine whether the user can create workflow.
      *
      * @param  \App\User  $user
      * @return mixed
@@ -55,10 +56,10 @@ class WorkflowPolicy {
      * Determine whether the user can update the workflow.
      *
      * @param  \App\User  $user
-     * @param  \App\Workflow  $workflows
+     * @param  \App\Workflow  $workflow
      * @return mixed
      */
-    public function update(User $user, Workflow $workflows) {
+    public function update(User $user, Workflow $workflow) {
         return $user->can('workflows.update');
     }
 
@@ -66,10 +67,10 @@ class WorkflowPolicy {
      * Determine whether the user can delete the workflow.
      *
      * @param  \App\User  $user
-     * @param  \App\Workflow  $workflows
+     * @param  \App\Workflow  $workflow
      * @return mixed
      */
-    public function delete(User $user, Workflow $workflows) {
+    public function delete(User $user, Workflow $workflow) {
         return $user->can('workflows.delete');
     }
 
@@ -77,10 +78,10 @@ class WorkflowPolicy {
      * Determine whether the user can restore the workflow.
      *
      * @param  \App\User  $user
-     * @param  \App\Workflow  $workflows
+     * @param  \App\Workflow  $workflow
      * @return mixed
      */
-    public function restore(User $user, Workflow $workflows) {
+    public function restore(User $user, Workflow $workflow) {
         //
     }
 
@@ -88,10 +89,10 @@ class WorkflowPolicy {
      * Determine whether the user can permanently delete the workflow.
      *
      * @param  \App\User  $user
-     * @param  \App\Workflow  $workflows
+     * @param  \App\Workflow  $workflow
      * @return mixed
      */
-    public function forceDelete(User $user, Workflow $workflows) {
+    public function forceDelete(User $user, Workflow $workflow) {
         //
     }
 }
