@@ -15,7 +15,9 @@
         "intervention/image": "^2.5",
         "laravel/framework": "^8.0",
         "laravel/passport": "^10.0",
-        "laravel/tinker": "^2.0"
+        "laravel/tinker": "^2.0",
+        "paypal/rest-api-sdk-php": "^1.14",
+        "stripe/stripe-php": "^7.33"
     },
     "require-dev": {
         "laravel/ui": "^3.0",
