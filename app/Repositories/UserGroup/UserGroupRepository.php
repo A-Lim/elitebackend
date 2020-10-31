@@ -80,8 +80,8 @@ class UserGroupRepository implements UserGroupRepositoryInterface {
         if ($data['is_admin'] == false && !empty($data['permissions'])) 
             $userGroup->givePermissions($data['permissions']);
 
-        if (!empty($data['userIds']))
-            $userGroup->users()->sync($data['userIds']);
+        // if (!empty($data['userIds']))
+        $userGroup->users()->sync($data['userIds']);
 
         $userGroup->fill($data);
         $userGroup->save();
