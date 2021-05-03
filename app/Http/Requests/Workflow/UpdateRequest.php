@@ -21,7 +21,7 @@ class UpdateRequest extends CustomFormRequest {
         return [
             'name' => 'required|unique:workflows,name,'.$workflow->id,
             'status' => 'required|in:'.implode(',', Workflow::STATUSES),
-            'processes.*.name' => 'required|string',
+            'processes.*.name' => 'required|string|max:100|regex:/^[\/a-z\d\-_\s]+$/i',
             'processes.*.default' => 'required|string',
             'processes.*.seq' => 'required|integer',
         ];

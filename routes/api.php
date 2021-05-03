@@ -30,12 +30,18 @@ Route::prefix('v1')->group(function () {
 
     /**** UserGroup ****/
     Route::namespace('API\v1\UserGroup')->group(function () {
-        
         Route::get('usergroups', 'UserGroupController@list');
-        Route::get('usergroups/{userGroup}', 'UserGroupController@details');
-        Route::post('usergroups', 'UserGroupController@create');
-        Route::post('usergroups/exists', 'UserGroupController@exists');
-        Route::patch('usergroups/{userGroup}', 'UserGroupController@update');
+            Route::get('usergroups/{userGroup}', 'UserGroupController@details');
+            Route::get('usergroups/{userGroup}/users', 'UserGroupController@listUsers');
+            Route::get('usergroups/{userGroup}/notusers', 'UserGroupController@listNotUsers');
+            
+            Route::post('usergroups', 'UserGroupController@create');
+            Route::post('usergroups/exists', 'UserGroupController@exists');
+            Route::post('usergroups/{userGroup}/users', 'UserGroupController@addUsers');
+
+            Route::patch('usergroups/{userGroup}', 'UserGroupController@update');
+            Route::delete('usergroups/{userGroup}', 'UserGroupController@delete');
+            Route::delete('usergroups/{userGroup}/users/{user}', 'UserGroupController@removeUser');
         Route::delete('usergroups/{userGroup}', 'UserGroupController@delete');
     });
 
@@ -59,6 +65,7 @@ Route::prefix('v1')->group(function () {
         Route::post('workflows', 'WorkflowController@create');
         Route::post('workflows/exists', 'WorkflowController@exists');
         Route::patch('workflows/{workflow}', 'WorkflowController@update');
+        Route::patch('workflows/{workflow}/columnwidth', 'WorkflowController@updateColumnWidth');
         Route::patch('workflows/{workflow}/activate', 'WorkflowController@activate');
         Route::patch('workflows/{workflow}/deactivate', 'WorkflowController@deactivate');
         Route::delete('workflows/{workflow}', 'WorkflowController@delete');
@@ -69,9 +76,17 @@ Route::prefix('v1')->group(function () {
         Route::get('workflows/{workflow}/orders', 'OrderController@list');
         Route::get('workflows/{workflow}/orders/{id}', 'OrderController@details');
         Route::post('workflows/{workflow}/orders', 'OrderController@create');
+        Route::post('workflows/{workflow}/orders/import', 'OrderController@import');
         Route::post('workflows/{workflow}/orders/exists', 'OrderController@exists');
         Route::patch('workflows/{workflow}/orders/{id}', 'OrderController@update');
+        Route::patch('workflows/{workflow}/orders/{id}/status', 'OrderController@updateStatus');
         Route::patch('workflows/{workflow}/orders/{id}/updateprocess', 'OrderController@updateProcess');
         Route::delete('workflows/{workflow}/orders/{id}', 'OrderController@delete');
+    });
+
+    /**** Dashboard ****/
+    Route::namespace('API\v1\Dashboard')->group(function () {
+        Route::get('dashboard/stats', 'DashboardController@stats');
+        Route::get('dashboard/overduesoon', 'DashboardController@overduesoon');
     });
 });

@@ -12,7 +12,7 @@ use Carbon\Carbon;
 use App\User;
 use App\SystemSetting;
 use App\Repositories\User\UserRepositoryInterface;
-use App\Repositories\Auth\OAuthRepositoryInterface;
+use App\Repositories\OAuth\OAuthRepositoryInterface;
 use App\Repositories\SystemSetting\SystemSettingRepositoryInterface;
 
 use Illuminate\Http\Request;

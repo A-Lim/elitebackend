@@ -7,12 +7,13 @@ use App\OrderLog;
 use App\Workflow;
 use App\Process;
 use App\OrderFile;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 use File;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class OrderRepository implements IOrderRepository {
     const STATUS_INPROGRESS = 'in progress';
@@ -31,14 +32,11 @@ class OrderRepository implements IOrderRepository {
             ->where($conditions)->exists();
     }
 
-     /**
+    /**
      * {@inheritdoc}
      */
-    public function list(Workflow $workflow, $query, $withFiles = false, $paginate = false) {
-        $tableName = '_workflow_'.$workflow->id;
-        $query = Order::fromTable($tableName)
-            ->agGridQuery($query)
-            ->orderBy('id', 'DESC');
+    public function list(Workflow $workflow, $data, $withFiles = false, $paginate = false) {
+        $query = $this->listQuery($workflow, $data);
 
         if ($paginate) {
             $limit = isset($data['limit']) ? $data['limit'] : 10;
@@ -53,24 +51,33 @@ class OrderRepository implements IOrderRepository {
     /**
      * {@inheritdoc}
      */
-    public function find(Workflow $workflow, $order_id) {
+    public function find(Workflow $workflow, $order_id, $withFiles = false, $withOrderLogs = false) {
         $tableName = '_workflow_'.$workflow->id;
         $order = Order::fromTable($tableName)
             ->where('id', $order_id)
             ->first();
 
-        $files = OrderFile::where('workflow_id', $workflow->id)
-            ->where('order_id', $order_id)
-            ->get();
+        if ($order == null)
+            return null;
 
-        $orderLogs = OrderLog::with(['process', 'user'])
-            ->where('workflow_id', $workflow->id)
-            ->where('order_id', $order_id)
-            ->orderBy('created_at', 'DESC')
-            ->get();
+        if ($withFiles) {
+            $files = OrderFile::where('workflow_id', $workflow->id)
+                ->where('order_id', $order_id)
+                ->get();
 
-        $order->setAttribute('files', $files);
-        $order->setAttribute('orderLogs', $orderLogs);
+            $order->setAttribute('files', $files);
+        }
+        
+        if ($withOrderLogs) {
+            $orderLogs = OrderLog::with(['process', 'user'])
+                ->where('workflow_id', $workflow->id)
+                ->where('order_id', $order_id)
+                ->orderBy('created_at', 'DESC')
+                ->get();
+
+            $order->setAttribute('orderLogs', $orderLogs);
+        }
+        
         return $order;
     }
 
@@ -82,16 +89,19 @@ class OrderRepository implements IOrderRepository {
 
         $insert_data = [
             'iwo' => $data['iwo'],
-            'customer' => $data['customer'],
-            'delivery_date' => $data['delivery_date'],
+            'company' => $data['company'],
+            'description' => $data['description'],
+            'quantity' => $data['quantity'],
+            'delivery_date' => Carbon::createFromFormat(env('DATE_FORMAT'), $data['delivery_date']),
             'remark' => $data['remark'] ?? null,
-            'status' => self::STATUS_INPROGRESS
+            'status' => $data['status'],
+            'person_in_charge' => $data['person_in_charge']
         ];
 
         foreach ($workflow->processes as $process) {
             $insert_data[$process->code] = $data[$process->code] ?? $process->default;
         }
-
+        
         $insert_data['created_by'] = auth()->id();
         $insert_data['created_at'] = Carbon::now();
 
@@ -105,6 +115,33 @@ class OrderRepository implements IOrderRepository {
         DB::commit();
     }
 
+    /**
+     * {@inheritdoc}
+     */
+    public function bulkCreate(Workflow $workflow, Collection $data) {
+        $tableName = '_workflow_'.$workflow->id;
+        // remove duplicates
+        $data = $data->unique('iwo_no');
+
+        $importIWOs = $data->pluck('iwo_no');
+
+        $duplicates = Order::fromTable($tableName)->whereIn('iwo', $importIWOs)->get();
+
+        if (count($duplicates) > 0) {
+            $duplicateIWOs = $duplicates->pluck('iwo')->toArray();
+            // remove duplicates 
+            $data = $data->filter(function($row) {
+                return !in_array($row['iwo'], $duplicateIWOs);
+            });
+        }
+        dd(count($duplicates));
+        // if ($duplicates->cou)
+        // dd($duplicates);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function update(Workflow $workflow, Order $order, $data, $files = null) {
         $tableName = '_workflow_'.$workflow->id;
 
@@ -112,10 +149,13 @@ class OrderRepository implements IOrderRepository {
 
         $update_data = [
             'iwo' => $data['iwo'],
-            'customer' => $data['customer'],
-            'delivery_date' => $data['delivery_date'],
+            'company' => $data['company'],
+            'description' => $data['description'],
+            'quantity' => $data['quantity'],
+            'delivery_date' => Carbon::createFromFormat(env('DATE_FORMAT'), $data['delivery_date']),
             'remark' => $data['remark'] ?? null,
-            'status' => $data['status'] ?? self::STATUS_INPROGRESS
+            'status' => $data['status'] ?? self::STATUS_INPROGRESS,
+            'person_in_charge' => $data['person_in_charge']
         ];
 
         $update_data['updated_by'] = auth()->id();
@@ -129,10 +169,11 @@ class OrderRepository implements IOrderRepository {
         $update_data['created_at'] = Carbon::now();
 
         // retrieve files that is not listed 
-        $toBeDeleted = $order->files()
-            // skip mutator
+        $toBeDeleted = OrderFile::where('workflow_id', $workflow->id)
+            ->where('order_id', $order->id)
+            ->whereNotIn('id', $data['files'])
             ->toBase()
-            ->whereNotIn('id', $data['files'])->get();
+            ->get();
         
         DB::beginTransaction();
         // update order
@@ -155,6 +196,16 @@ class OrderRepository implements IOrderRepository {
     /**
      * {@inheritdoc}
      */
+    public function updateStatus(Workflow $workflow, Order $order, $status) {
+        $tableName = '_workflow_'.$workflow->id;
+        Order::fromTable($tableName)
+            ->where('id', $order->id)
+            ->update(['status' => $status]);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function delete(Workflow $workflow, $order_id) {
         $tableName = '_workflow_'.$workflow->id;
         Order::fromTable($tableName)
@@ -171,13 +222,34 @@ class OrderRepository implements IOrderRepository {
         DB::beginTransaction();
 
         $tableName = '_workflow_'.$workflow->id;
+
+        // $processes = Process::where('workflow_id', $workflow->id)->get();
+        // dd($processes);
+
+
         $process = Process::find($data['process_id']);
         $process_column = $process->code;
-        $from_status = $order->$process_column;
+        $from_status = $order->{$process_column};
+
         Order::fromTable($tableName)
             ->where('id', $order->id)
             ->update([$process_column => $data['status']]);
+        $order->{$process_column} = $data['status'];
+        $order->save();
 
+        // $success_count = 0;
+        // foreach ($processes as $process) {
+        //     if ($order->{$process->code} == 'Completed')
+        //         $success_count++;
+        // }
+
+        // update order if all processes completed
+        // if (count($processes) == $success_count) {
+        //     Order::fromTable($tableName)
+        //         ->where('id', $order->id)
+        //         ->update(['status' => Order::STATUS_COMPLETED]);
+        // }
+        
         OrderLog::create([
             'workflow_id' => $workflow->id,
             'order_id' => $order->id,
@@ -191,9 +263,16 @@ class OrderRepository implements IOrderRepository {
         DB::commit();
     }
 
+    private function listQuery(Workflow $workflow, $data) {
+        $tableName = '_workflow_'.$workflow->id;
+        return Order::fromTable($tableName)
+            ->agGridQuery($data)
+            ->orderBy('iwo', 'DESC');
+    }
+
     private function deleteFiles($order_files) {
         $filePaths = $order_files->pluck('path')->toArray();
-
+        
         foreach ($filePaths as $filePath) {
             $fullPath = public_path($filePath);
             unlink($fullPath);

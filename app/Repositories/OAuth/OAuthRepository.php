@@ -1,5 +1,5 @@
 <?php
-namespace App\Repositories\Auth;
+namespace App\Repositories\OAuth;
 
 use Laravel\Passport\Client as OAuthClient;
 use Laravel\Passport\RefreshToken;

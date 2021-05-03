@@ -10,6 +10,17 @@ class Order extends Model {
 
     protected $guarded = [];
     protected $hidden = [];
+    protected $casts = [
+        'delivery_date' => 'datetime:d/m/Y',
+    ];
+
+    const STATUS_INPROGRESS = 'in progress';
+    const STATUS_COMPLETED = 'completed';
+
+    const STATUSES = [
+        self::STATUS_INPROGRESS,
+        self::STATUS_COMPLETED,
+    ];
 
     public function scopeFromTable($query, $tableName) {
         $this->setTable($tableName);

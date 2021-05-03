@@ -2,10 +2,11 @@
 namespace App\Repositories\UserGroup;
 
 use DB;
+use App\User;
 use App\UserGroup;
 use Carbon\Carbon;
 
-class UserGroupRepository implements UserGroupRepositoryInterface {
+class UserGroupRepository implements IUserGroupRepository {
     /**
      * {@inheritdoc}
      */
@@ -17,7 +18,7 @@ class UserGroupRepository implements UserGroupRepositoryInterface {
         return UserGroup::where($conditions)->exists();
     }
 
-     /**
+    /**
      * {@inheritdoc}
      */
     public function list($data, $paginate = false) {
@@ -36,12 +37,47 @@ class UserGroupRepository implements UserGroupRepositoryInterface {
 
         return $query->get();
     }
-    
+
+    /**
+     * {@inheritdoc}
+     */
+    public function listUsers(UserGroup $userGroup, $data, $paginate = false) {
+        $query = User::buildQuery($data)
+            ->join('user_usergroup', 'user_usergroup.user_id', 'users.id')
+            ->where('user_usergroup.usergroup_id', $userGroup->id)
+            ->orderBy('id', 'desc');
+
+        if ($paginate) {
+            $limit = isset($data['limit']) ? $data['limit'] : 10;
+            return $query->paginate($limit);
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function listNotUsers(UserGroup $userGroup, $data, $paginate = false) {
+        $query = User::buildQuery($data)
+            ->select('users.*')
+            ->leftjoin('user_usergroup', 'user_usergroup.user_id', 'users.id')
+            ->whereNotIn('user_usergroup.user_id', $userGroup->users->pluck('id')->toArray())
+            ->orderBy('id', 'desc');
+
+        if ($paginate) {
+            $limit = isset($data['limit']) ? $data['limit'] : 10;
+            return $query->paginate($limit);
+        }
+
+        return $query->get();
+    }
+
     /**
      * {@inheritdoc}
      */
     public function find($id) {
-        return UserGroup::with(['users', 'permissions'])->find($id);
+        return UserGroup::with(['permissions'])->find($id);
     }
 
     /**
@@ -60,10 +96,20 @@ class UserGroupRepository implements UserGroupRepositoryInterface {
         if ($data['is_admin'] == false && !empty($data['permissions'])) 
             $userGroup->givePermissions($data['permissions']);
         
-        if (!empty($data['userIds']))
-            $userGroup->users()->sync($data['userIds']);
-        
-        return UserGroup::with('permissions')->where('id', $userGroup->id)->first();
+        return $userGroup;
+    }
+
+    public function addUsers(UserGroup $userGroup, $data) {
+        $attachedIds = $userGroup->users()
+            ->whereIn('id', $data['userIds'])
+            ->pluck('id')
+            ->toArray();
+        $newIds = array_diff($data['userIds'], $attachedIds);
+        $userGroup->users()->attach($newIds);
+    }
+
+    public function removeUser(UserGroup $userGroup, User $user) {
+        $userGroup->users()->detach($user->id);
     }
 
     /**
@@ -79,9 +125,6 @@ class UserGroupRepository implements UserGroupRepositoryInterface {
         // save permissions if not admin
         if ($data['is_admin'] == false && !empty($data['permissions'])) 
             $userGroup->givePermissions($data['permissions']);
-
-        // if (!empty($data['userIds']))
-        $userGroup->users()->sync($data['userIds']);
 
         $userGroup->fill($data);
         $userGroup->save();

@@ -21,9 +21,9 @@ class CreateRequest extends CustomFormRequest {
         $tableName = '_workflow_'.$workflow->id;
         return [
             'iwo' => 'required|string|unique:'.$tableName.',iwo',
-            'customer' => 'required|string',
+            'company' => 'required|string',
             'remark' => 'nullable|string',
-            'delivery_date' => 'required|date_format:Y-m-d',
+            'delivery_date' => 'required|date_format:d/m/Y',
             'processes.*.name' => 'required|string',
             'processes.*.default' => 'required|string',
         ];

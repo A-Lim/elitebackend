@@ -49,7 +49,13 @@ class WorkflowRepository implements IWorkflowRepository {
 
         DB::beginTransaction();
         $workflow = Workflow::create($data);
-        $workflow->processes()->createMany($data['processes']);
+
+        $processes = $data['processes'];
+        foreach ($processes as $key => $process) {
+            $processes[$key]['code'] = preg_replace('/[^A-Za-z0-9\-]/', '_', strtolower($process['name']));
+        }
+
+        $workflow->processes()->createMany($processes);
         $this->create_workflow_table($workflow);
         DB::commit();
 
@@ -68,33 +74,45 @@ class WorkflowRepository implements IWorkflowRepository {
      */
     public function update(Workflow $workflow, $data) {
         $data['updated_by'] = auth()->id();
+
+        $processes = $data['processes'];
+        foreach ($processes as $key => $process) {
+            $processes[$key]['code'] = preg_replace('/[^A-Za-z0-9\-]/', '_', strtolower($process['name']));
+        }
+
         // retrieve all the process ids from request
-        $reqProcessIds = collect($data['processes'])->map(function($item, $key) {
+        $reqProcessIds = collect($processes)->map(function($item, $key) {
             return $item['id'];
         })->toArray();
 
         // retrieve newly added processes
-        $newProcesses = collect($data['processes'])->filter(function($item, $key) {
-            // if no id means new
-            if (!isset($item['id']))
-                return $item;
-        })->toArray();
+        // $newProcesses = collect($data['processes'])->filter(function($item, $key) {
+        //     // if no id means new
+        //     if (!isset($item['id']))
+        //         return $item;
+        // })->toArray();
 
         // retrieve process that are to be deleted
         $toBeDeleted = Process::where('workflow_id', $workflow->id)
             ->whereNotIn('id', $reqProcessIds)
             ->get();
 
+        
+
         DB::beginTransaction();
+        // delete all workflow process
+        $workflow->processes()->delete();
+        $workflow->processes()->createMany($processes);
+
         // update workflow
         $workflow->fill($data);
         $workflow->save();
-        // add / update processes
-        $this->bulk_update($workflow, $data['processes']);
-        // delete processes
-        $workflow->processes()
-            ->whereIn('id', $toBeDeleted->pluck('id')->toArray())
-            ->delete();
+        // // add / update processes
+        // $this->bulk_update($workflow, $data['processes']);
+        // // delete processes
+        // $workflow->processes()
+        //     ->whereIn('id', $toBeDeleted->pluck('id')->toArray())
+        //     ->delete();
         // update denorm workflow table
         $this->update_workflow_table($workflow, $data['processes'], $toBeDeleted->toArray());
         DB::commit();
@@ -104,12 +122,21 @@ class WorkflowRepository implements IWorkflowRepository {
     /**
      * {@inheritdoc}
      */
+    public function updateColumnWidth(Workflow $workflow, $data) {
+        Process::where('workflow_id', $workflow->id)
+            ->where('code', $data['code'])
+            ->update(['width' => $data['width']]);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function delete(Workflow $workflow) {
         $tableName = '_workflow_'.$workflow->id;
         DB::beginTransaction();
-        $workflow->processes()->delete();
+        // $workflow->processes()->delete();
         $workflow->delete();
-        Schema::dropIfExists($tableName);
+        // Schema::dropIfExists($tableName);
         DB::commit();
     }
 
@@ -118,11 +145,14 @@ class WorkflowRepository implements IWorkflowRepository {
         Schema::create($tableName, function($table) use ($workflow) {
             $table->bigIncrements('id');
             $table->string('iwo', 20)->unique();
-            $table->string('customer', 200);
+            $table->string('company', 200);
+            $table->text('description');
+            $table->integer('quantity');
             foreach ($workflow->processes as $process) {
-                $column_name = strtolower(str_replace(' ', '_', $process['name']));
+                $column_name = $process['code'];
                 $table->string($column_name, 100);
             }
+            $table->string('person_in_charge', 100)->nullable();
             $table->text('remark')->nullable();
             $table->string('status', 20);
             $table->date('delivery_date')->nullable();
@@ -130,7 +160,7 @@ class WorkflowRepository implements IWorkflowRepository {
             $table->bigInteger('updated_by')->unsigned()->nullable();
             $table->timestamps();
 
-            $table->index('customer');
+            $table->index('company');
             $table->index('status');
         });
     }
@@ -170,16 +200,14 @@ class WorkflowRepository implements IWorkflowRepository {
         Schema::table($tableName, function($table) use ($tableName, $workflow, $addProcesses, $deleteProcesses) {
             // add new column
             foreach ($addProcesses as $process) {
-                $column_name = strtolower(str_replace(' ', '_', $process['name']));
-                if (!Schema::hasColumn($tableName, $column_name)) {
-                    $table->string(strtolower($column_name), 100)->before('remark');
+                if (!Schema::hasColumn($tableName, $process['code'])) {
+                    $table->string(strtolower($process['code']), 100)->before('remark');
                 }
             }
             // delete existing column
             foreach ($deleteProcesses as $process) {
-                $column_name = strtolower($process['name']);
-                if (Schema::hasColumn($tableName, $column_name)) {
-                    $table->dropColumn($column_name);
+                if (Schema::hasColumn($tableName, $process['code'])) {
+                    $table->dropColumn($process['code']);
                 }
             }
         });

@@ -56,6 +56,12 @@ class WorkflowController extends ApiController {
         return $this->responseWithMessage(200, 'Workflow updated.');
     }
 
+    public function updateColumnWidth(Request $request, Workflow $workflow) {
+        $this->authorize('update', $workflow);
+        $this->workflowRepository->updateColumnWidth($workflow, $request->all());
+        return $this->responseWithMessage(200, 'Workflow column width update.');
+    }
+
     public function activate(Request $request, Workflow $workflow) {
         $this->authorize('update', $workflow);
         $data['status'] = Workflow::STATUS_ACTIVE;

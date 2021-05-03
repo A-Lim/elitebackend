@@ -17,9 +17,12 @@ class CreateProcessesTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('workflow_id')->unsigned();
             $table->string('name', 100);
+            $table->string('code', 100);
             $table->text('statuses');
             $table->string('default', 100);
             $table->integer('seq')->unsigned();
+            $table->string('pinned', 5)->default(0);
+            $table->integer('width')->unsigned();
             $table->boolean('is_published')->default(true);
 
             $table->foreign('workflow_id')

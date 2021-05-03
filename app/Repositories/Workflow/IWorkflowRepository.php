@@ -53,6 +53,14 @@ interface IWorkflowRepository
     public function update(Workflow $workflow, $data);
 
     /**
+     * Updates a workflow process column with
+     * 
+     * @param Workflow $workflow
+     * @param array $data
+     */
+    public function updateColumnWidth(Workflow $workflow, $data);
+
+    /**
      * Deletes a workflow
      * 
      * @param Workflow $workflow

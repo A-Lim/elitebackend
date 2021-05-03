@@ -13,7 +13,7 @@ use App\User;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RefreshTokenRequest;
 
-use App\Repositories\Auth\OAuthRepositoryInterface;
+use App\Repositories\OAuth\OAuthRepositoryInterface;
 use App\Repositories\User\UserRepositoryInterface;
 
 class LoginController extends ApiController {

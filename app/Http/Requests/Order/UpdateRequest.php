@@ -21,12 +21,12 @@ class UpdateRequest extends CustomFormRequest {
         $tableName = '_workflow_'.$workflow->id;
         $order_id = $this->route('id');
         return [
-            // 'iwo' => 'required|string|unique:'.$tableName.',iwo,'.$order_id,
-            // 'customer' => 'required|string',
-            // 'remark' => 'nullable|string',
-            // 'delivery_date' => 'required|date_format:Y-m-d',
-            // 'processes.*.name' => 'required|string',
-            // 'processes.*.default' => 'required|string',
+            'iwo' => 'required|string|unique:'.$tableName.',iwo,'.$order_id,
+            'company' => 'required|string',
+            'remark' => 'nullable|string',
+            'delivery_date' => 'required|date_format:d/m/Y',
+            'processes.*.name' => 'required|string',
+            'processes.*.default' => 'required|string',
         ];
     }
 

@@ -3,14 +3,14 @@ namespace App\Repositories\UserGroup;
 
 use App\UserGroup;
 
-interface UserGroupRepositoryInterface
+interface IUserGroupRepository
 {
     /**
      * Check if code exists
      */
     public function codeExists($code, $userGroupId = null);
 
-     /**
+    /**
      * List usergroup
      * 
      * @param array $query
@@ -18,6 +18,32 @@ interface UserGroupRepositoryInterface
      * @return [UserGroup]
      */
     public function list($query, $paginate = false);
+
+    /**
+     * List users that belong to usergroup
+     * 
+     * @param array $query
+     * @param boolean $paginate = false
+     * @return [User]
+     */
+    public function listUsers(UserGroup $userGroup, $data, $paginate = false);
+
+    /**
+     * List users that does not belong to usergroup
+     * 
+     * @param array $query
+     * @param boolean $paginate = false
+     * @return [User]
+     */
+    public function listNotUsers(UserGroup $userGroup, $data, $paginate = false);
+
+    /**
+     * List users that belong to a usergroup from usergroup code
+     * 
+     * @param string $code
+     * @return [User]
+     */
+    // public function listActiveUsersFromCode($code);
 
     /**
      * Find usergroup from id

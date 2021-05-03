@@ -1,5 +1,5 @@
 <?php
-namespace App\Repositories\Auth;
+namespace App\Repositories\OAuth;
 
 interface OAuthRepositoryInterface
 {

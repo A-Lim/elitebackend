@@ -15,7 +15,7 @@ class CreateWorkflowsTable extends Migration
     {
         Schema::create('workflows', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('name')->unique();
+            $table->string('name');
             $table->string('status', 20);
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('updated_by')->unsigned()->nullable();
