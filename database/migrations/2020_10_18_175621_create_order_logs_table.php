@@ -17,7 +17,7 @@ class CreateOrderLogsTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('workflow_id')->unsigned();
             $table->bigInteger('order_id')->unsigned();
-            $table->bigInteger('process_id')->unsigned();
+            $table->bigInteger('process_id')->nullable()->unsigned();
             $table->string('from_status', 100);
             $table->string('to_status', 100);
             $table->bigInteger('created_by')->unsigned();

@@ -159,6 +159,7 @@ class WorkflowRepository implements IWorkflowRepository {
             $table->bigInteger('created_by')->unsigned();
             $table->bigInteger('updated_by')->unsigned()->nullable();
             $table->timestamps();
+            $table->date('completed_at')->nullable();
 
             $table->index('company');
             $table->index('status');

@@ -3,19 +3,24 @@
 namespace App\Http\Controllers\API\v1\Order;
 
 use Illuminate\Http\Request;
-use App\Http\Controllers\ApiController;
-use App\Repositories\Order\IOrderRepository;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use Carbon\Carbon;
 
 use App\Workflow;
+use App\Order;
 use App\Imports\OrdersImport;
+use App\Exports\OrdersExport;
 use App\Http\Requests\Order\IWOExistsRequest;
 use App\Http\Requests\Order\CreateRequest;
 use App\Http\Requests\Order\UpdateRequest;
 use App\Http\Requests\Order\ImportRequest;
 use App\Http\Requests\Order\UpdateStatusRequest;
 use App\Http\Requests\Order\UpdateProcessRequest;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+
+use App\Http\Controllers\ApiController;
+use App\Repositories\Order\IOrderRepository;
 
 class OrderController extends ApiController {
 
@@ -108,36 +113,49 @@ class OrderController extends ApiController {
     }
 
     public function import(ImportRequest $request, Workflow $workflow) {
-        $import = new OrdersImport($workflow);
-        $rows = $import->toCollection(request()->file('file'))->first();
-        // dd($rows->toArray());
+        $this->authorize('create', Order::class);
+
+        $import = new OrdersImport();
+        $rows = $import->toArray(request()->file('file'))[0];
 
         // validate
-        $this->_validateExcelRows($workflow, $rows->toArray());
-        // Validator::make($rows->toArray(), [
-        //     '*.iwo_no' => 'required|unique:_workflow_'.$workflow->id.',iwo',
-        //     '*.qty' => 'required|integer',
-        // ])->validate();
+        $this->validateExcelRows($workflow, $rows);
+        $count = $this->orderRepository->bulkCreate($workflow, $rows);
 
-        // $this->orderRepository->bulkCreate($workflow, $rows->first());
-        // dd($rows);
-        // Validator::make($rows, [
-        //     '*.0' => 'required|unique:_workflow_'.$workflow->id.',iwo',
-        //     '*.5' => 'required|integer',
-        // ])->validate();
-        // dd($validate);
+        return $this->responseWithMessage(200, $count. ' orders imported.');
     }
 
-    private function _validateExcelRows(Workflow $workflow, $data) {
+    public function export(Request $request, Workflow $workflow) {
+        // $this->authorize('export', Order::class);
+        $data['status'] = 'equals:'.Order::STATUS_COMPLETED;
+        $orders = $this->orderRepository->list($workflow, $data);
+
+        return new OrdersExport($workflow, $orders);
+    }
+
+    private function validateExcelRows(Workflow $workflow, $data) {
+        // convert dates 
+        foreach ($data as $index => $row) {
+            $data[$index]['promised_delivery_date'] = ExcelDate::excelToDateTimeObject($row['promised_delivery_date']);
+        }
+
         $rules = [
-            '*.iwo_no' => 'required|unique:_workflow_'.$workflow->id.',iwo',
+            '*.iwo_no' => 'required|distinct|unique:_workflow_'.$workflow->id.',iwo',
             '*.qty' => 'required|integer',
+            '*.promised_delivery_date' => 'required'
         ];
 
-        $messages = [
-            '*.iwo_no' => 'The :index :attribute field is required 123.',
-        ];
-        // dd(get_class(Validator));
+        $messages = [];
+
+        foreach ($data as $index => $row) {
+            $messages[$index.'.iwo_no.required'] = 'Row '.((int)$index + 2).' IWO NO. is empty.';
+            $messages[$index.'.iwo_no.unique'] = 'Row '.((int)$index + 2).' IWO NO. already exist.';
+            $messages[$index.'.iwo_no.distinct'] = 'Row '.((int)$index + 2).' IWO NO. has duplicates.';
+            $messages[$index.'.qty.required'] = 'Row '.((int)$index + 2).' QTY is empty.';
+            $messages[$index.'.qty.integer'] = 'Row '.((int)$index + 2).' QTY is not a number.';
+            $messages[$index.'.promised_delivery_date.required'] = 'Row '.((int)$index + 2).' Promised Delivery Date is empty.';
+        }
+
         Validator::make($data, $rules, $messages)->validate();
     }
 }

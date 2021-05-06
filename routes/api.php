@@ -74,7 +74,8 @@ Route::prefix('v1')->group(function () {
     /**** Orders ****/
     Route::namespace('API\v1\Order')->group(function () {
         Route::get('workflows/{workflow}/orders', 'OrderController@list');
-        Route::get('workflows/{workflow}/orders/{id}', 'OrderController@details');
+        Route::get('workflows/{workflow}/orders/export', 'OrderController@export');
+        Route::get('workflows/{workflow}/orders/{id}', 'OrderController@details');\
         Route::post('workflows/{workflow}/orders', 'OrderController@create');
         Route::post('workflows/{workflow}/orders/import', 'OrderController@import');
         Route::post('workflows/{workflow}/orders/exists', 'OrderController@exists');

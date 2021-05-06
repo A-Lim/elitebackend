@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class OrderRepository implements IOrderRepository {
     const STATUS_INPROGRESS = 'in progress';
@@ -118,25 +119,39 @@ class OrderRepository implements IOrderRepository {
     /**
      * {@inheritdoc}
      */
-    public function bulkCreate(Workflow $workflow, Collection $data) {
+    public function bulkCreate(Workflow $workflow, array $data) {
         $tableName = '_workflow_'.$workflow->id;
-        // remove duplicates
-        $data = $data->unique('iwo_no');
+        $count = 0;
 
-        $importIWOs = $data->pluck('iwo_no');
+        $orders = [];
+        $processes = [];
 
-        $duplicates = Order::fromTable($tableName)->whereIn('iwo', $importIWOs)->get();
-
-        if (count($duplicates) > 0) {
-            $duplicateIWOs = $duplicates->pluck('iwo')->toArray();
-            // remove duplicates 
-            $data = $data->filter(function($row) {
-                return !in_array($row['iwo'], $duplicateIWOs);
-            });
+        foreach ($workflow->processes as $process) {
+            $processes[$process->code] = $process->default;
         }
-        dd(count($duplicates));
-        // if ($duplicates->cou)
-        // dd($duplicates);
+
+        foreach ($data as $row) {
+            $order = [
+                'iwo' => $row['iwo_no'],
+                'company' => $row['name_of_client'],
+                'description' => $row['work_description'],
+                'quantity' => $row['qty'],
+                'remark' => $row['remark'],
+                'delivery_date' => ExcelDate::excelToDateTimeObject($row['promised_delivery_date']),
+                'status' => ORDER::STATUS_INPROGRESS,
+                'created_by' => auth()->id(),
+                'created_at' => Carbon::now()
+            ];
+
+            $order = array_merge($order, $processes);
+            array_push($orders, $order);
+        }
+
+        DB::beginTransaction();
+        DB::table($tableName)->insert($orders);
+        DB::commit();
+
+        return count($orders);
     }
 
     /**
@@ -198,9 +213,25 @@ class OrderRepository implements IOrderRepository {
      */
     public function updateStatus(Workflow $workflow, Order $order, $status) {
         $tableName = '_workflow_'.$workflow->id;
+
+        $data = ['status' => $status];
+        $from_status = $order->status;
+
+        if ($status === Order::STATUS_COMPLETED)
+            $data['completed_at'] = Carbon::now();
+
         Order::fromTable($tableName)
             ->where('id', $order->id)
-            ->update(['status' => $status]);
+            ->update($data);
+
+        OrderLog::create([
+            'workflow_id' => $workflow->id,
+            'order_id' => $order->id,
+            'from_status' => $from_status,
+            'to_status' => $status,
+            'created_by' => auth()->id(),
+            'created_at' => Carbon::now()
+        ]);
     }
 
     /**
