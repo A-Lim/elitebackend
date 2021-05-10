@@ -254,10 +254,6 @@ class OrderRepository implements IOrderRepository {
 
         $tableName = '_workflow_'.$workflow->id;
 
-        // $processes = Process::where('workflow_id', $workflow->id)->get();
-        // dd($processes);
-
-
         $process = Process::find($data['process_id']);
         $process_column = $process->code;
         $from_status = $order->{$process_column};
@@ -268,19 +264,6 @@ class OrderRepository implements IOrderRepository {
         $order->{$process_column} = $data['status'];
         $order->save();
 
-        // $success_count = 0;
-        // foreach ($processes as $process) {
-        //     if ($order->{$process->code} == 'Completed')
-        //         $success_count++;
-        // }
-
-        // update order if all processes completed
-        // if (count($processes) == $success_count) {
-        //     Order::fromTable($tableName)
-        //         ->where('id', $order->id)
-        //         ->update(['status' => Order::STATUS_COMPLETED]);
-        // }
-        
         OrderLog::create([
             'workflow_id' => $workflow->id,
             'order_id' => $order->id,

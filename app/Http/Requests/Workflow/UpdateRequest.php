@@ -19,7 +19,7 @@ class UpdateRequest extends CustomFormRequest {
     public function rules() {
         $workflow = $this->route('workflow');
         return [
-            'name' => 'required|unique:workflows,name,'.$workflow->id,
+            'name' => 'required|unique:workflows,name,'.$workflow->id.',id,deleted_at,NULL',
             'status' => 'required|in:'.implode(',', Workflow::STATUSES),
             'processes.*.name' => 'required|string|max:100|regex:/^[\/a-z\d\-_\s]+$/i',
             'processes.*.default' => 'required|string',

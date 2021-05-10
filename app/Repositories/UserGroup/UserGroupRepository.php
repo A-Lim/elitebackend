@@ -117,14 +117,14 @@ class UserGroupRepository implements IUserGroupRepository {
      */
     public function update(UserGroup $userGroup, $data) {
         $data['updated_by'] = auth()->id();
-
+        
         if (!empty($data['code']))
             unset($data['code']);
 
         // if isAdmin, dont save permissions, cause it's gonna be full access
         // save permissions if not admin
-        if ($data['is_admin'] == false && !empty($data['permissions'])) 
-            $userGroup->givePermissions($data['permissions']);
+        if ($data['is_admin'] == false) 
+            $userGroup->givePermissions($data['permissions'] ?? []);
 
         $userGroup->fill($data);
         $userGroup->save();

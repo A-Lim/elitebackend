@@ -77,7 +77,8 @@ class WorkflowRepository implements IWorkflowRepository {
 
         $processes = $data['processes'];
         foreach ($processes as $key => $process) {
-            $processes[$key]['code'] = preg_replace('/[^A-Za-z0-9\-]/', '_', strtolower($process['name']));
+            if ($process['code'] === null)
+                $processes[$key]['code'] = preg_replace('/[^A-Za-z0-9\-]/', '_', strtolower($process['name']));
         }
 
         // retrieve all the process ids from request
@@ -85,19 +86,10 @@ class WorkflowRepository implements IWorkflowRepository {
             return $item['id'];
         })->toArray();
 
-        // retrieve newly added processes
-        // $newProcesses = collect($data['processes'])->filter(function($item, $key) {
-        //     // if no id means new
-        //     if (!isset($item['id']))
-        //         return $item;
-        // })->toArray();
-
         // retrieve process that are to be deleted
         $toBeDeleted = Process::where('workflow_id', $workflow->id)
             ->whereNotIn('id', $reqProcessIds)
             ->get();
-
-        
 
         DB::beginTransaction();
         // delete all workflow process
@@ -107,12 +99,6 @@ class WorkflowRepository implements IWorkflowRepository {
         // update workflow
         $workflow->fill($data);
         $workflow->save();
-        // // add / update processes
-        // $this->bulk_update($workflow, $data['processes']);
-        // // delete processes
-        // $workflow->processes()
-        //     ->whereIn('id', $toBeDeleted->pluck('id')->toArray())
-        //     ->delete();
         // update denorm workflow table
         $this->update_workflow_table($workflow, $data['processes'], $toBeDeleted->toArray());
         DB::commit();

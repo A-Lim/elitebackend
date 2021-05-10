@@ -71,7 +71,7 @@
 
             <div class="content">
                 <div class="title m-b-md">
-                    Global Family Survey
+                    {{ env('APP_NAME' )}}
                 </div>
             </div>
         </div>

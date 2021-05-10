@@ -51,6 +51,8 @@ class PermissionsTableSeeder extends Seeder {
             ['permission_module_id' => '5', 'code' => 'orders.create', 'name' => 'Create Orders', 'description' => ''],
             ['permission_module_id' => '5', 'code' => 'orders.update', 'name' => 'Update Orders', 'description' => ''],
             ['permission_module_id' => '5', 'code' => 'orders.delete', 'name' => 'Delete Orders', 'description' => ''],
+            ['permission_module_id' => '5', 'code' => 'orders.import', 'name' => 'Import Orders', 'description' => ''],
+            ['permission_module_id' => '5', 'code' => 'orders.export', 'name' => 'Export Orders', 'description' => ''],
         ];
 
         PermissionModule::insert($permission_modules);

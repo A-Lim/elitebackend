@@ -19,6 +19,6 @@ class OrdersImport implements ToArray, WithHeadingRow, WithChunkReading
     }
 
     public function chunkSize(): int {
-        return 100;
+        return 10;
     }
 }
