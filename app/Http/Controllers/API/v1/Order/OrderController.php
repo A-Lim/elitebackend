@@ -129,7 +129,7 @@ class OrderController extends ApiController {
         // $this->authorize('export', Order::class);
         $data['status'] = 'equals:'.Order::STATUS_COMPLETED;
         $orders = $this->orderRepository->list($workflow, $data);
-
+        
         return new OrdersExport($workflow, $orders);
     }
 

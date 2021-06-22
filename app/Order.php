@@ -12,6 +12,7 @@ class Order extends Model {
     protected $hidden = [];
     protected $casts = [
         'delivery_date' => 'datetime:d/m/Y',
+        'completed_at' => 'datetime:d/m/Y',
     ];
 
     const STATUS_INPROGRESS = 'in progress';

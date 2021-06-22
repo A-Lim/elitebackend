@@ -49,7 +49,8 @@ class OrdersExport implements FromCollection, Responsable,
             'NAME OF CLIENT',
             'WORK DESCRIPTION',
             'QTY',
-            'DELIVERY DATE'
+            'DELIVERY DATE',
+            'COMPLETED DATE'
         ];
 
         foreach ($this->workflow->processes as $process) {
@@ -84,7 +85,8 @@ class OrdersExport implements FromCollection, Responsable,
             $order->company,
             $order->description,
             $order->quantity,
-            ExcelDate::dateTimeToExcel($order->delivery_date)
+            $order->delivery_date,
+            $order->completed_at,
         ];
 
         foreach ($this->workflow->processes as $process) {

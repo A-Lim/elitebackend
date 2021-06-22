@@ -289,7 +289,8 @@ class OrderRepository implements IOrderRepository {
         
         foreach ($filePaths as $filePath) {
             $fullPath = public_path($filePath);
-            unlink($fullPath);
+            if (file_exists($fullPath))
+                unlink($fullPath);
         }
     }
 
