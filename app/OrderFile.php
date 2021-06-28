@@ -3,6 +3,7 @@ namespace App;
 
 use Illuminate\Support\Facades\URL;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class OrderFile extends Model {
 
@@ -15,6 +16,6 @@ class OrderFile extends Model {
     }
 
     public function getPathAttribute($value) {
-        return URL::to('/').$value;
+        return url(Storage::url($value));
     }
 }

@@ -96,7 +96,7 @@ class OrderRepository implements IOrderRepository {
             'delivery_date' => Carbon::createFromFormat(env('DATE_FORMAT'), $data['delivery_date']),
             'remark' => $data['remark'] ?? null,
             'status' => $data['status'],
-            'person_in_charge' => $data['person_in_charge']
+            'person_in_charge' => isset($data['person_in_charge']) ? $data['person_in_charge'] : null
         ];
 
         foreach ($workflow->processes as $process) {
@@ -170,7 +170,7 @@ class OrderRepository implements IOrderRepository {
             'delivery_date' => Carbon::createFromFormat(env('DATE_FORMAT'), $data['delivery_date']),
             'remark' => $data['remark'] ?? null,
             'status' => $data['status'] ?? self::STATUS_INPROGRESS,
-            'person_in_charge' => $data['person_in_charge']
+            'person_in_charge' => isset($data['person_in_charge']) ? $data['person_in_charge'] : null
         ];
 
         $update_data['updated_by'] = auth()->id();
@@ -239,9 +239,13 @@ class OrderRepository implements IOrderRepository {
      */
     public function delete(Workflow $workflow, $order_id) {
         $tableName = '_workflow_'.$workflow->id;
-        Order::fromTable($tableName)
+        $order = Order::fromTable($tableName)
             ->where('id', $order_id)
-            ->delete();
+            ->first();
+
+        $this->deleteFiles($order->files);
+        $order->files()->delete();
+        $order->delete();
     }
 
     /**
@@ -280,18 +284,16 @@ class OrderRepository implements IOrderRepository {
     private function listQuery(Workflow $workflow, $data) {
         $tableName = '_workflow_'.$workflow->id;
         return Order::fromTable($tableName)
-            ->agGridQuery($data)
-            ->orderBy('iwo', 'DESC');
+            ->agGridQuery($data);
     }
 
     private function deleteFiles($order_files) {
-        $filePaths = $order_files->pluck('path')->toArray();
-        
-        foreach ($filePaths as $filePath) {
-            $fullPath = public_path($filePath);
-            if (file_exists($fullPath))
-                unlink($fullPath);
+        $filePaths = [];
+        foreach ($order_files as $file) {
+            array_push($filePaths, $file->getRawOriginal('path'));
         }
+
+        Storage::disk('public')->delete($filePaths);
     }
 
     private function saveFiles($workflow_id, $order_id, $files) {
@@ -300,14 +302,14 @@ class OrderRepository implements IOrderRepository {
 
         $filesData = [];
         
-        $saveDirectory = 'public/iwo/'.$workflow_id.'/'.$order_id.'/';
+        $saveDirectory = 'iwo/'.$workflow_id.'/'.$order_id;
         foreach ($files['uploadFiles'] as $file) {
             $fileName = $file->getClientOriginalName();
-            Storage::putFileAs($saveDirectory, $file, $fileName);
+            $path = Storage::disk('public')->putFileAs($saveDirectory, $file, $fileName);
             $fileData = [
                 'workflow_id' => $workflow_id,
                 'name' => $fileName,
-                'path' => Storage::url($saveDirectory.$fileName),
+                'path' => $path,
                 'type' => $file->getClientOriginalExtension(),
                 'uploaded_by' => auth()->id(),
                 'uploaded_at' => Carbon::now()
